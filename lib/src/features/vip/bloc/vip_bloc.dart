@@ -29,9 +29,22 @@ class VipBloc extends Bloc<VipEvent, Vip> {
     Emitter<Vip> emit,
   ) async {
     if (Platform.isIOS) {
-      emit(Vip(loading: true));
+      emit(state.copyWith(loading: true));
 
       try {
+        // Сначала проверяем VIP статус
+        final isVip = await _repository.getVip();
+
+        // Если пользователь VIP, не нужно загружать offering
+        if (isVip) {
+          emit(state.copyWith(
+            isVip: true,
+            loading: false,
+          ));
+          return;
+        }
+
+        // Определяем identifier только если пользователь не VIP
         late String identifier;
         if (event.initial) {
           final showCount = _repository.getShowCount();
@@ -40,6 +53,7 @@ class VipBloc extends Bloc<VipEvent, Vip> {
           identifier =
               isFirstOrSecondShow ? Identifiers.paywall4 : Identifiers.paywall1;
           await _repository.saveShowCount(showCount + 1);
+
           if (showCount == 2 || showCount == 4 || showCount == 6) {
             InAppReview.instance.requestReview();
           }
@@ -47,19 +61,22 @@ class VipBloc extends Bloc<VipEvent, Vip> {
           identifier = event.identifier;
         }
 
-        final isVip = await _repository.getVip();
         final offering = await _repository.getOffering(identifier);
 
-        emit(Vip(
-          isVip: isVip,
+        emit(state.copyWith(
+          isVip: false,
           offering: offering,
+          loading: false,
         ));
       } catch (e) {
         logger(e);
-        emit(Vip());
+        emit(state.copyWith(
+          isVip: false,
+          loading: false,
+        ));
       }
     } else {
-      emit(Vip(isVip: true));
+      emit(state.copyWith(isVip: true, loading: false));
     }
   }
 }
