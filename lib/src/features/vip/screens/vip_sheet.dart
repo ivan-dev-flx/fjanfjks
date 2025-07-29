@@ -36,22 +36,30 @@ class _VipSheetState extends State<VipSheet> {
     if (!isClosed) {
       isClosed = true;
       Navigator.of(context).pop();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        DialogWidget.show(context, title: title);
+      });
     }
-    DialogWidget.show(context, title: title);
-    context.read<VipBloc>().add(CheckVip(identifier: widget.identifier));
   }
 
   @override
   void initState() {
     super.initState();
     context.read<VipBloc>().add(CheckVip(identifier: widget.identifier));
+
     Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+
       setState(() {
         visible = true;
       });
-      if (mounted && context.read<VipBloc>().state.offering == null) {
+
+      final state = context.read<VipBloc>().state;
+      if (state.offering == null && !state.loading) {
         Navigator.of(context).pop();
-        DialogWidget.show(context, title: 'Error');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          DialogWidget.show(context, title: 'Something go wrong');
+        });
       }
     });
   }
@@ -68,19 +76,24 @@ class _VipSheetState extends State<VipSheet> {
             if (state.loading || state.offering == null) {
               return const Center(child: CircularProgressIndicator());
             }
+
             return PaywallView(
               offering: state.offering,
               onDismiss: () {
-                Navigator.of(context).pop();
+                if (!isClosed) {
+                  isClosed = true;
+                  Navigator.of(context).pop();
+                }
               },
               onPurchaseCompleted: (customerInfo, storeTransaction) async {
                 try {
                   final entitlement =
                       customerInfo.entitlements.active.values.firstOrNull;
                   final productId = entitlement?.productIdentifier;
-                  final revenue = 0.0;
-                  final currency = 'USD';
-                  final transactionId = storeTransaction?.transactionIdentifier;
+                  const revenue = 0.0;
+                  const currency = 'USD';
+                  final transactionId =
+                      storeTransaction?.transactionIdentifier;
 
                   await AnalyticsService().logPurchaseCompleted(
                     subscriptionType: productId,
@@ -91,7 +104,7 @@ class _VipSheetState extends State<VipSheet> {
                   );
 
                   print(
-                      'Purchase completed: $productId, Revenue: $revenue $currency'); // Для отладки
+                      'Purchase completed: $productId, Revenue: $revenue $currency');
 
                   showInfo('Purchase Completed');
                 } catch (e) {
@@ -100,10 +113,10 @@ class _VipSheetState extends State<VipSheet> {
                 }
               },
               onPurchaseCancelled: () {
-                // nothing
+                // no-op
               },
               onPurchaseError: (e) {
-                // nothing
+                // no-op
               },
               onRestoreCompleted: (customerInfo) async {
                 if (customerInfo.entitlements.active.isNotEmpty) {
@@ -112,7 +125,7 @@ class _VipSheetState extends State<VipSheet> {
                 showInfo('Restore Completed!');
               },
               onRestoreError: (e) {
-                // nothing
+                // no-op
               },
             );
           },
