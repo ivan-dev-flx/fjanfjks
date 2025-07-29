@@ -2,6 +2,7 @@ import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:in_app_review/in_app_review.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../../../core/config/constants.dart';
@@ -29,6 +30,9 @@ class _OnboardScreenState extends State<OnboardScreen> {
   void onNext() async {
     if (index == 1) {
       await AppTrackingTransparency.requestTrackingAuthorization();
+    }
+    if (index == 2) {
+      InAppReview.instance.requestReview();
     }
     if (index == 3) {
       await context.read<OnboardRepository>().removeOnboard();
