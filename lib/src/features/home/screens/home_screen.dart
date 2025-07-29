@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:printer_app/appsflyer.dart';
+import 'package:printer_app/src/core/models/vip.dart';
 import '../../../core/utils.dart';
 import '../../../core/config/constants.dart';
 import '../../printer/screens/documents_screen.dart';
@@ -33,18 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     initApp();
-    final state = context.read<VipBloc>().state;
-    if (!_paywallShown && !state.isVip) {
-      _paywallShown = true;
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          VipSheet.show(
-            context,
-            identifier: Identifiers.paywall1,
-          );
-        }
-      });
-    }
+
+    // Запускаем проверку VIP статуса
+    context.read<VipBloc>().add(CheckVip(
+          identifier: Identifiers.paywall1,
+          initial: true,
+        ));
   }
 
   Future<void> initApp() async {
@@ -54,15 +49,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ShareBloc, ShareState>(
-      listener: (context, state) {
-        if (state is ShareLoaded) {
-          context.push(
-            DocumentsScreen.routePath,
-            extra: File(state.files[0].path),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ShareBloc, ShareState>(
+          listener: (context, state) {
+            if (state is ShareLoaded) {
+              context.push(
+                DocumentsScreen.routePath,
+                extra: File(state.files[0].path),
+              );
+            }
+          },
+        ),
+        BlocListener<VipBloc, Vip>(
+          listener: (context, state) {
+            // Показываем paywall только когда загрузка завершена и пользователь не VIP
+            if (!_paywallShown &&
+                !state!.loading &&
+                !state.isVip &&
+                Platform.isIOS) {
+              _paywallShown = true;
+
+              Future.delayed(const Duration(seconds: 1), () {
+                if (mounted) {
+                  VipSheet.show(
+                    context,
+                    identifier: Identifiers.paywall1,
+                  );
+                }
+              });
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         appBar: const HomeAppbar(),
