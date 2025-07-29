@@ -5,7 +5,7 @@
 		<key>AppGroupId</key>
 		<string>$(CUSTOM_GROUP_ID)</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
-		<true />
+		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
